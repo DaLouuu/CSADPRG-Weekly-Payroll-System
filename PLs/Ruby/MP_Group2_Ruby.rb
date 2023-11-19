@@ -177,9 +177,11 @@ class PayrollSystem
     base_salary = @daily_salary / @regular_hours * worked_hours
     base_salary *= night_shift?(out_time) ? 1.1 : 1.0
     base_salary *= holiday_rest_day_multiplier(day_type, holiday_type)
-    overtime_hours = [0, worked_hours - @regular_hours].max
+
+    # Subtract regular hours before calculating overtime hours
+    overtime_hours = [0, worked_hours - @regular_hours - 1].max
     @total_overtime_hours += overtime_hours
-    overtime_pay = overtime_hours * overtime_rate(out_time, day_type, holiday_type)
+    overtime_pay = overtime_hours > 0 ? (overtime_hours * overtime_rate(out_time, day_type, holiday_type)) : 0
     (base_salary + overtime_pay).round(2)
   end
 
