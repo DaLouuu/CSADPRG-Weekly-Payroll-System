@@ -186,12 +186,12 @@ class PayrollSystem
   # Calculate the worked hours based on the in and out times
   def calculate_worked_hours(in_time, out_time)
     in_time = DateTime.strptime("2000-01-01 #{in_time}", "%Y-%m-%d %H%M")
-    out_time = DateTime.strptime("2000-01-01 #{out_time}", "%Y-%m-%d %H%M")
+
+    # Convert out_time to the corresponding 24-hour format if it's until 8:59 AM
+    out_time = out_time.to_i <= 859 ? DateTime.strptime("2000-01-02 #{out_time}", "%Y-%m-%d %H%M") : DateTime.strptime("2000-01-01 #{out_time}", "%Y-%m-%d %H%M")
 
     total_worked_seconds = out_time.to_time - in_time.to_time
     total_worked_hours = total_worked_seconds / 3600.0
-
-    total_worked_hours -= 1 if total_worked_hours > @regular_hours
 
     total_worked_hours
   end
