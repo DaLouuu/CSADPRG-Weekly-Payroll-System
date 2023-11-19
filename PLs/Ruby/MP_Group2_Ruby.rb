@@ -1,3 +1,11 @@
+=begin
+********************
+Last names: Brodeth, Guillarte, llorando, Zulueta
+Language: Ruby
+Paradigm(s): Functional, Procedural, Object Oriented
+********************
+=end
+
 require 'date'
 
 class PayrollSystem
