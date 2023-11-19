@@ -11,33 +11,42 @@ Generating Pay Roll....
 ---------------------------------
 Enter Employee Name: Yesha
 ---------------------------------
-DAY 1 (if absent Enter 0900) 
+DAY 1 (if absent Enter 0900 on OUT Time) 
+Is today a Holiday? (Y/N) Y
+Please enter if Special Non-Working Holiday (SNWH) OR Regular Holiday (RH)
+Enter IN Time: 
 Enter OUT Time:
 Salary for the day: (OUTPUT)
 ---------------------------------
-DAY 2 (if absent Enter 0900) 
+DAY 2 (if absent Enter 0900 on OUT Time) 
+Enter IN Time: 
 ENTER OUT Time:
 Salary for the day: (OUTPUT)
 ---------------------------------
-Day 3 (if absent Enter 0900) 
+Day 3 (if absent Enter 0900 on OUT Time) 
+Enter IN Time: 
 ENTER OUT Time:
 Salary for the day: (OUTPUT)
 ---------------------------------
-DAY 4 (if absent Enter 0900) 
+DAY 4 (if absent Enter 0900 on OUT Time) 
+Enter IN Time: 
 Enter OUT Time:
 Salary for the day: (OUTPUT)
 ---------------------------------
-DAY 5 (if absent Enter 0900) 
+DAY 5 (if absent Enter 0900 on OUT Time) 
+Enter IN Time: 
 ENTER OUT Time:
 Salary for the day: (OUTPUT)
 ---------------------------------
 Day 6 (REST DAY)
-(if absent Enter 0900) 
+(if absent Enter 0900 on OUT Time) 
+Enter IN Time: 
 ENTER OUT Time:
 Salary for the day: (OUTPUT)
 ---------------------------------
 Day 7 (REST DAY)
-(if absent Enter 0900) 
+(if absent Enter 0900 on OUT Time) 
+Enter IN Time: 
 ENTER OUT Time:
 Salary for the day: (OUTPUT)
 ---------------------------------
