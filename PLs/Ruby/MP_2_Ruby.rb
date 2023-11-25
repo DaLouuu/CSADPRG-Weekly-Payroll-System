@@ -1,285 +1,281 @@
 =begin
 ********************
-Last names: Brodeth, Guillarte, llorando, Zulueta
+Last names: Brodeth, Guillarte, Llorando, Zulueta
 Language: Ruby
-Paradigm(s): Functional, Procedural, Object Oriented
+Paradigm(s): Object Oriented, Functional, Procedural
 ********************
 =end
 
-require 'date'
+# CONSTANT
+HOURLY_RATE = 62.5
+NON_NIGHT_SHIFT = 0
+NIGHT_SHIFT = 1
+NIGHT_SHIFT_TIME = [2300, 0, 100, 200, 300, 400, 500, 600]
+NSD = 1.10
 
-class PayrollSystem
-  attr_accessor :daily_salary, :regular_hours, :workdays, :rest_days
+# Day shift is from 0900 to 1800
+# Night shift is from 2200 to 0600
 
-  NIGHT_SHIFT_START_HOUR = 22
-  NIGHT_SHIFT_END_HOUR = 6
+# Displays the main menu options for the payroll system.
+def display_main_menu
+  puts "WEEKLY PAYROLL SYSTEM"
+  puts "-------------------------"
+  puts "1. Configure Employee"
+  puts "2. Generate Payroll"
+  puts "3. Exit the Program"
+  puts "--------------------------"
+  print "Select an option: "
+end
 
-  OVERTIME_RATES = {
-    normal: { non_night_shift: 1.25, night_shift: 1.375 },
-    rest_day: { non_night_shift: 1.69, night_shift: 1.859 },
-    special_non_working_day: { non_night_shift: 1.69, night_shift: 1.859 },
-    special_non_working_day_rest_day: { non_night_shift: 1.95, night_shift: 2.145 },
-    regular_holiday: { non_night_shift: 2.6, night_shift: 2.86 },
-    regular_holiday_rest_day: { non_night_shift: 3.38, night_shift: 3.718 }
-  }.freeze
+# Represents a workday with specific attributes such as start time, end time, day type, and additional pay details.
+class Workday
 
-  def initialize
-    @employee_name = ""
-    @daily_salary = 500.0
-    @regular_hours = 8
-    @workdays = 5
-    @rest_days = 2
-    @total_overtime_hours = 0
+  attr_accessor :daily_wage, :start_time, :end_time, :day_type, :overtime_hours, :night_shift_hours
+
+  # Initializes a new Workday instance with default values.
+  def initialize(start_time = 900, end_time = 900, day_type = "Normal Day")
+    @daily_wage = 500
+    @start_time = start_time
+    @end_time = end_time 
+    @day_type = day_type
+    @overtime_hours = 0
+    @night_shift_hours = 0
   end
 
-  # Display the main menu
-  def display_menu
-    puts "\nPayroll Menu"
-    puts "1. Generate Pay Roll"
-    puts "2. Update Work Hours"
-    puts "3. Configure Payroll Settings"
-    puts "4. Exit"
-    print "Select Option: "
-  end
-
-  # Generate the payroll for an employee
-  def generate_payroll
-    puts "\nGenerating Pay Roll...."
-    print "Enter Employee Name: "
-    @employee_name = gets.chomp
-
-    total_salary = 0
-    regular_days_present = 0  # Counter for regular days present
-    rest_days_present = 0     # Counter for rest days present
-    regular_days_absent = 0   # Counter for regular days absent
-    rest_days_absent = 0      # Counter for rest days absent
-
-    # Loop through workdays and rest days
-    (1..(@workdays + @rest_days)).each do |day|
-      puts "\n---------------------------------"
-      puts "DAY #{day}"
-
-      if day <= @workdays
-        puts "Regular Day"
-      else
-        puts "Rest Day"
-      end
-
-      print "Enter OUT Time (HHMM in military time format): "
-      out_time = gets.chomp
-
-      # If out time is 0900, consider the person absent
-      if out_time == "0900"
-        if day <= @workdays
-          regular_days_absent += 1
-        else
-          rest_days_absent += 1
-        end
-        next  # Skip the rest of the loop if the person is absent
-      end
-
-      day_type = determine_day_type(day)
-      holiday_type = get_holiday_type(day, day_type)
-
-      salary = calculate_salary(out_time, day_type, holiday_type)
-      total_salary += salary
-
-      puts "Salary for the day: #{salary}"
-
-      if day <= @workdays
-        regular_days_present += 1
-      else
-        rest_days_present += 1
-      end
+  # Calculates additional pay based on the start and end times of the workday.
+  def calculate_additional_pay
+    if (@start_time == 900 && @end_time > 2200) || (@start_time == 900 && NIGHT_SHIFT_TIME.include?(@end_time))
+      @overtime_hours = 4
+    elsif (@start_time == 900 && @end_time > 1800) && (@start_time == 900 && @end_time < 2200)
+      @overtime_hours = (@end_time - 1800) % 1000 / 100
     end
-
-    display_summary(total_salary, regular_days_present, rest_days_present, regular_days_absent, rest_days_absent)
+    
+    if NIGHT_SHIFT_TIME.include?(@end_time)
+      @night_shift_hours = NIGHT_SHIFT_TIME.index(@end_time) + 1
+    end
   end
 
-  # Update work hours configuration
-  def update_work_hours
-    puts "\nUpdate Work Hours Configuration"
-    puts "1. Update Daily Salary"
-    puts "2. Update Maximum Regular Hours per Day"
-    puts "3. Update Number of Workdays in a Week"
-    puts "4. Update Number of Rest Days in a Week"
-    puts "5. Exit"
-    print "Select Option: "
-    option = gets.chomp.to_i
-
-    case option
-    when 1
-      print "Enter new Daily Salary: "
-      @daily_salary = gets.chomp.to_f
-      puts "Daily Salary updated successfully."
-    when 2
-      print "Enter new Maximum Regular Hours per Day: "
-      @regular_hours = gets.chomp.to_i
-      puts "Maximum Regular Hours per Day updated successfully."
-    when 3
-      print "Enter new Number of Workdays in a Week: "
-      @workdays = gets.chomp.to_i
-      puts "Number of Workdays in a Week updated successfully."
-    when 4
-      print "Enter new Number of Rest Days in a Week: "
-      @rest_days = gets.chomp.to_i
-      puts "Number of Rest Days in a Week updated successfully."
-    when 5
-      puts "Exiting Update Work Hours Configuration."
+  # Formats the workday configuration as a string for display.
+  def display_config
+    print "\nDAILY WAGE: #{@daily_wage}\n-------------------------------\n"
+  
+    if start_time < 1000
+      print "Start Time: 0#{@start_time}\n"
     else
-      puts "Invalid option. Please enter a valid option."
+      print "Start Time: #{@start_time}\n"
     end
-  end
 
-  # Configure payroll settings
-  def configure_payroll_settings
-    puts "\nConfigure Payroll Settings"
-    puts "1. Reset to Default Settings"
-    puts "2. Exit"
-    print "Select Option: "
-    option = gets.chomp.to_i
-
-    case option
-    when 1
-      reset_to_default_settings
-      puts "Settings reset to default values."
-    when 2
-      puts "Exiting Configure Payroll Settings."
+    if end_time < 1000
+      puts "End Time: 0#{@end_time}"
     else
-      puts "Invalid option. Please enter a valid option."
-    end
-  end
-
-  private
-
-  # Determine the type of day (normal day or rest day)
-  def determine_day_type(day)
-    day <= @workdays ? "normal day" : "rest day"
-  end
-
-  # Get the type of holiday for a given day
-  def get_holiday_type(day, day_type)
-    return "not_applicable" if day_type == "rest day"
-
-    puts "Holiday:"
-    puts "1. Special Non Working Holiday"
-    puts "2. Regular Holiday"
-    puts "3. Not Applicable"
-    print "Enter Choice (1-3): "
-    holiday_choice = gets.chomp.to_i
-
-    case holiday_choice
-    when 1
-      "special_non_working_day"
-    when 2
-      "regular_holiday"
-    else
-      "not_applicable"
-    end
-  end
-
-  # Calculate the salary for a given day
-  def calculate_salary(out_time, day_type, holiday_type)
-    in_time = "0900"
-    worked_hours = calculate_worked_hours(in_time, out_time)
-    base_salary = @daily_salary / @regular_hours * worked_hours
-    base_salary *= night_shift?(out_time) ? 1.1 : 1.0
-    base_salary *= holiday_rest_day_multiplier(day_type, holiday_type)
-
-    # Subtract regular hours before calculating overtime hours
-    overtime_hours = [0, worked_hours - @regular_hours - 1].max
-    @total_overtime_hours += overtime_hours
-    overtime_pay = overtime_hours > 0 ? (overtime_hours * overtime_rate(out_time, day_type, holiday_type)) : 0
-    (base_salary + overtime_pay).round(2)
-  end
-
-  # Calculate the worked hours based on the in and out times
-  def calculate_worked_hours(in_time, out_time)
-    in_time = DateTime.strptime("2000-01-01 #{in_time}", "%Y-%m-%d %H%M")
-
-    # Convert out_time to the corresponding 24-hour format if it's until 8:59 AM
-    out_time = out_time.to_i <= 859 ? DateTime.strptime("2000-01-02 #{out_time}", "%Y-%m-%d %H%M") : DateTime.strptime("2000-01-01 #{out_time}", "%Y-%m-%d %H%M")
-
-    total_worked_seconds = out_time.to_time - in_time.to_time
-    total_worked_hours = total_worked_seconds / 3600.0
-
-    total_worked_hours
-  end
-
-  # Check if the out time falls within the night shift hours
-  def night_shift?(out_time)
-    out_time_hours = DateTime.strptime("2000-01-01 #{out_time}", "%Y-%m-%d %H%M").hour
-    out_time_hours < NIGHT_SHIFT_END_HOUR || out_time_hours >= NIGHT_SHIFT_START_HOUR
-  end
-
-  # Get the multiplier for holiday and rest day
-  def holiday_rest_day_multiplier(day_type, holiday_type)
-    multiplier = 1.0
-
-    if holiday_type != "not_applicable"
-      multiplier = case holiday_type
-                   when /rest day/ then 3.38
-                   when /holiday/ then 2.6
-                   else 1.69
-                   end
-    elsif day_type == "rest day"
-      multiplier = 1.3
+      puts "End Time: #{@end_time}"
     end
 
-    multiplier
-  end
-
-  # Get the overtime rate based on the day type and holiday type
-  def overtime_rate(out_time, day_type, holiday_type)
-    rate_key = "#{day_type}_#{holiday_type}".to_sym
-
-    if OVERTIME_RATES.key?(rate_key)
-      shift_type = night_shift?(out_time) ? :night_shift : :non_night_shift
-      OVERTIME_RATES[rate_key][shift_type]
-    else
-      1.0
-    end
-  end
-
-  # Reset the settings to default values
-  def reset_to_default_settings
-    @daily_salary = 500.0
-    @regular_hours = 8
-    @workdays = 5
-    @rest_days = 2
-  end
-
-  # Display the summary of the weekly payroll, including regular and rest days count
-  def display_summary(total_salary, regular_days_present, rest_days_present, regular_days_absent, rest_days_absent)
-    puts "\n#{@employee_name}'s Weekly Payroll"
-    puts "Number of (Regular) Days Present\t\t\t#{regular_days_present}"
-    puts "Number of (Rest) Days Present\t\t\t\t#{rest_days_present}"
-    puts "Number of (Regular) Days Absent\t\t\t\t#{regular_days_absent}"
-    puts "Number of (Rest) Days Absent\t\t\t\t#{rest_days_absent}"
-    puts "Total Hours Overtime (Night Shift Overtime)\t\t#{@total_overtime_hours}"
-    puts "--------------------------------------------------------"
-    puts "Total Salary for the Week\t\t\t\t#{'%.2f' % total_salary}"
+    puts "Day Type: #{@day_type}"
+    puts "Overtime Hours: #{@overtime_hours}"
+    print "Night Shift Hours: #{@night_shift_hours}"
   end
 end
 
-# Instantiate the PayrollSystem
-payroll_system = PayrollSystem.new
+# Represents an employee with a name and an array of workdays for each day of the week.
+class Worker
 
-# Main program loop
+  attr_accessor :name
+
+  @@workers = []
+
+  # Initializes a new Worker instance with a specified name.
+  def initialize(name)
+    @name = name
+    @workdays = Array.new(7) { Workday.new }
+    @@workers << self
+  end
+
+  # Adds a workday to the employee's array of workdays for a specific day.
+  def add_workday(day, workday)
+    @workdays[day - 1] = workday if day >= 1 && day <= 7
+  end
+
+  # Retrieves the workday for a specific day.
+  def retrieve_workday(day)
+    @workdays[day - 1]
+  end
+
+  # Finds a worker by name.
+  def find_worker(workers, name)
+    workers.any? { |worker| worker.name == name }
+  end
+end
+
+# Checks if a worker with the given name exists in the array of workers.
+def find_worker(workers, name)
+  workers.any? { |worker| worker.name == name }
+end
+
+# Retrieves a worker with the given name from the array of workers.
+def get_worker(workers, name)
+  workers.find { |worker| worker.name == name }
+end
+
+# Determines the rest holiday pay multiplier based on the type of rest day.
+def rest_holiday_multiplier(type)
+  case type
+  when "Rest Day"
+    return 1.30
+  when "SNWH" # Special Non-Working Holiday
+    return 1.30
+  when "SNWH and Rest Day"
+    return 1.50
+  when "RH" # Regular Holiday
+    return 2.00
+  when  "RH and Rest Day"
+    return 2.60
+  end
+end
+
+# Determines the overtime pay multiplier based on the type of workday and shift.
+def overtime_multiplier(type, is_shift)
+  if is_shift == NON_NIGHT_SHIFT
+    case type
+    when "Normal Day"
+      return 1.25
+    when "Rest Day"
+      return 1.69
+    when "SNWH"
+      return 1.69
+    when "SNWH and Rest Day"
+      return 1.95
+    when "RH"
+      return 2.60
+    when  "RH and Rest Day"
+      return 3.38
+    end
+  elsif is_shift == NIGHT_SHIFT
+    case type
+    when "Normal Day"
+      return 1.375
+    when "Rest Day"
+      return 1.869
+    when "SNWH"
+      return 1.859
+    when "SNWH and Rest Day"
+      return 2.145
+    when "RH"
+      return 2.860
+    when  "RH and Rest Day"
+      return 3.718
+    end
+  end
+end
+
+# Program execution
+
+workers = []
+
 loop do
-  payroll_system.display_menu
-  option = gets.chomp.to_i
+  display_main_menu
+  choice = gets.chomp.to_i
 
-  case option
+  case choice
+  # Configure Employee
   when 1
-    payroll_system.generate_payroll
+    puts  "\nCONFIGURE EMPLOYEE"
+    print "Enter employee name: "
+    name = gets.chomp
+
+
+    if !find_worker(workers, name)
+      workers << Worker.new(name)
+      puts "New employee added!"
+    end
+
+    if find_worker(workers, name)
+      worker = get_worker(workers, name)
+      for day in 1..7 do
+        workday = worker.retrieve_workday(day-1)
+
+        puts "\nModifying attributes for day #{day} of Employee: #{worker.name}:\n"
+        puts "Current configuration:"
+        puts workday.display_config
+        
+        print "-------------------------------\nEnter End Time: "
+        workday.end_time = gets.chomp.to_i
+        
+        if workday.end_time != 900
+          print "Enter Day Type: "
+          workday.day_type = gets.chomp
+        elsif day != 6 && day != 7
+          workday.day_type = "Absent"
+        else
+          workday.day_type = "Rest Day"
+        end
+        
+        puts "\nModified day #{day} for Employee: #{worker.name}"
+        
+        workday.calculate_additional_pay
+        puts workday.display_config
+      end
+    end
+  
+  # Generate Payroll
   when 2
-    payroll_system.update_work_hours
+    puts  "GENERATE PAYROLL"
+    print "Enter employee name: "
+    name = gets.chomp
+
+    if find_worker(workers, name)
+      worker = get_worker(workers, name)
+      weekly_earnings = 0
+      for i in 0..6 do
+        workday = worker.retrieve_workday(i)
+
+        print workday.display_config
+        earnings = workday.daily_wage
+        
+        # Employee worked
+        if workday.start_time == 900 && workday.end_time != 900
+          if workday.day_type == "Normal Day"
+            if workday.overtime_hours > 0
+              earnings += workday.overtime_hours * HOURLY_RATE * overtime_multiplier(workday.day_type, 0)
+            end
+            
+            if workday.night_shift_hours > 0
+              earnings += workday.night_shift_hours * HOURLY_RATE * overtime_multiplier(workday.day_type, 1)
+            end
+          elsif workday.day_type != "Normal Day"
+            earnings = earnings * rest_holiday_multiplier(workday.day_type)
+            if workday.overtime_hours > 0
+              earnings += workday.overtime_hours * HOURLY_RATE * overtime_multiplier(workday.day_type, 0)
+            end
+            
+            if workday.night_shift_hours > 0
+              earnings += workday.night_shift_hours * HOURLY_RATE * overtime_multiplier(workday.day_type, 1)
+            end
+          end
+        # Employee did not work
+        # Either they were absent or it was their rest day
+        elsif workday.start_time == 900 && workday.end_time == 900
+          if i == 5 || i == 6 # Rest day
+            earnings = workday.daily_wage;
+          else                # Absent
+            earnings -= earnings
+          end
+        # Night shift
+        elsif workday.start_time == 1800
+          earnings += workday.night_shift_hours * HOURLY_RATE * NSD
+        end
+        weekly_earnings += earnings
+        printf "\nDay #{i+1}: " + '%.2f' % earnings + "\n\n"
+      end
+      puts "TOTAL WEEKLY EARNINGS: #{weekly_earnings}"
+    else
+      puts "Employee not found!"
+    end
+
   when 3
-    payroll_system.configure_payroll_settings
-  when 4
+    puts "Thank you for using the payroll system. Goodbye!"
     break
   else
-    puts "Invalid option. Please enter a valid option."
+    puts "\nInvalid option. Please try again."
   end
 end
