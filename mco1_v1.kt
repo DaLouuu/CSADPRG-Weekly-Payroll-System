@@ -24,63 +24,58 @@ fun changeOverTimeHours(payroll: Payroll, overtime : String){
     payroll.overTimeHours = overtime
 }
 
-fun isOverTime(inTime : String, outTime : String) : Boolean{
-    val calInTime = toMilitaryTime(inTime)
-    val calOutTime = toMilitaryTime(outTime)
+fun calculateOverTime(payroll : Payroll){
+    var inTimeStr = payroll.inTime
+    var outTimeStr = payroll.outTime
+    var othours = 0
+    try{
+        //change input to hours and minutes
+        val inHours = inTimeStr.substring(0, 2).toInt()
+        val inMinutes = inTimeStr.substring(2, 4).toInt()
 
-    val workDurationInMins = calculateDuration(calInTime, calOutTime)
+        val outHours = outTimeStr.substring(0, 2).toInt()
+        val outMinutes = outTimeStr.substring(2, 4).toInt()
 
-    if(workDurationInMins <= 8 * 60){
-        return true
-    }
-    else{
-        return false
-    }
-}
+        //calculate the difference in minutes
+        var inTimeMinutes = inHours * 60 + inMinutes
+        var outTimeMinutes = outHours * 60 + outMinutes
 
-fun toMilitaryTime(timeStr : String): Calendar{
-    val calendar = Calendar.getInstance()
-    val hour = timeStr.substring(0, 2).toInt()
-    val min = timeStr.substring(2, 4).toInt()
-    calendar.set(Calendar.HOUR_OF_DAY, hour)
-    calendar.set(Calendar.MINUTE, min)
-    return calendar;
-}
+        //so that there is no negative
+        if (outTimeMinutes < inTimeMinutes) {
+            outTimeMinutes += 24 * 60 // Add 24 hours to consider the next day
+        }
 
-fun calculateDuration(inTime : Calendar, outTime : Calendar) : Int{
-    return ((outTime.timeInMillis - inTime.timeInMillis) / (1000 * 60)).toInt()
-}
+        val minutesPassed = outTimeMinutes - inTimeMinutes
 
-fun calculateOverTime(inTime: String, outTime: String): String {
-    val calInTime = toMilitaryTime(inTime)
-    val calOutTime = toMilitaryTime(outTime)
+        // Convert minutes to hours
+        val hoursPassed = minutesPassed / 60
 
-    val workDurationInMins = calculateDuration(calInTime, calOutTime)
+        println("Number of hours passed: $hoursPassed")
 
-    val normalWorkDuration = 8 * 60 // 8 hours in minutes
-    val overTimeMinutes = maxOf(workDurationInMins - normalWorkDuration, 0)
+        if (hoursPassed > 9) {
+            othours = hoursPassed - 9
+            println("Number of hours Overtime: $othours")
+            payroll.dDayHour = othours
+            payroll.overTimeHours = "$othours (0)"
+        }
 
-    val overTimeHours = overTimeMinutes / 60
+        if (outTimeStr.toInt() > 2200 || outTimeStr.toInt() <= 600) {
+            println("There is nightshift overtime")
 
-    return overTimeHours.toString()
-}
+            // Calculate overtime day (night)
+            val nightShHours = othours - 4
+            val dayShHours = othours - nightShHours
+            payroll.dDayHour = dayShHours
+            payroll.dNightHours = nightShHours
+            println("Hours nightshift: $nightShHours")
+            println("Total hours ot: $dayShHours ($nightShHours)")
+            payroll.overTimeHours = "$dayShHours ($nightShHours)"
 
-fun splitOvertime(payroll: Payroll, overtimeHours : Int) : String{
-    val pOutTime = payroll.outTime.toInt()
-    if(pOutTime >= 2200 || (pOutTime >= 0 && pOutTime < 600)){
-        //night shift
-        val nightShiftEnd = if (pOutTime >= 0 && pOutTime < 600) 600 else 2200
-        val nightShiftHours = minOf(overtimeHours, maxOf(0, nightShiftEnd - pOutTime))
-        val dayShiftHours = overtimeHours - nightShiftHours
+        }
 
-        payroll.dDayHour = dayShiftHours
-        payroll.dNightHours = nightShiftHours
 
-        return "$dayShiftHours ($nightShiftHours)"
-    }
-    else{
-        payroll.dDayHour = overtimeHours
-        return "$overtimeHours (0)"
+    }catch (e : Exception){
+        println("INVALID input. Please use HHMM format")
     }
 }
 
@@ -198,51 +193,28 @@ fun getOTNightRate(dType : String) : Double{
     }
 }
 
-
 fun computeSalary(payroll : Payroll){
-    var pOutTime = payroll.outTime
-    var pInTime = payroll.inTime
-    var dRate = payroll.dailyRate
-    var dType = payroll.dayType
-    var pSalary = payroll.salary
-
-    //compute if there are any overtime hours
-    var otHours = calculateOverTime(pInTime, pOutTime)
-    println("ot hours : $otHours")
-
-    //split overtime
-    var splitOT = splitOvertime(payroll, otHours.toInt())
-    var dDay = payroll.dDayHour
-    var dNight = payroll.dNightHours
-    println("day hours : $dDay")
-    println("night hours : $dNight")
-    //put split in payroll class
-    changeOverTimeHours(payroll, splitOT)
-
-    //conditions
-    if(otHours.toInt() > 0){
+    //which condition
+    if(payroll.dDayHour > 0){
         //there is overtime
-        if(dNight > 0){
-            //may nightshift
-            val withDayIncrease = dDay * (dRate/8) * getOTDayRate(dType)
-            val withNightIncrease = dNight * (dRate/8) * getOTNightRate(dType)
-            pSalary = pSalary + withDayIncrease + withNightIncrease
-            payroll.salary = pSalary
+        if(payroll.dNightHours > 0){
+            //there is overtime night hours
+            var dayincrease = payroll.dDayHour * (payroll.dailyRate/8) * getOTDayRate(payroll.dayType)
+            var nightincrease = payroll.dNightHours * (payroll.dailyRate/8) * getOTNightRate(payroll.dayType)
+            payroll.salary = payroll.dailyRate + dayincrease + nightincrease
         }
         else{
-            //no nightshift
-            println(getOTDayRate(dType))
-            val withDayIncrease = dDay * (dRate/8) * getOTDayRate(dType)
-            payroll.salary = pSalary + withDayIncrease
+            var dayincrease = payroll.dDayHour * (payroll.dailyRate/8) * getOTDayRate(payroll.dayType)
+            payroll.salary = payroll.dailyRate + dayincrease
         }
     }
     else{
         //no overtime
-        pSalary = pSalary + ((dRate / 8) * getRateNoOT(dType))
-        payroll.salary = pSalary
+        var increase = (payroll.dailyRate/8) * getRateNoOT(payroll.dayType)
+        payroll.salary = payroll.dailyRate + increase
     }
-
 }
+
 fun main() {
     println("Payroll for the week")
 
@@ -318,12 +290,7 @@ fun main() {
                     println("changing out time to $inputOutTime")
                     changeOutTime(choosePayroll, inputOutTime)
 
-                   // println("now computing for overtime")
-                    // compute overtime hours
-                    //var otHours = calculateOverTime(choosePayroll.inTime, choosePayroll.outTime)
-                    //println("overtime hours: $otHours")
-                    // split to string
-
+                    calculateOverTime(choosePayroll)
                     //compute salary
                     computeSalary(choosePayroll)
 
