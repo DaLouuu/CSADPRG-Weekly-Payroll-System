@@ -11,7 +11,7 @@ HOURLY_RATE = 62.5
 NON_NIGHT_SHIFT = 0
 NIGHT_SHIFT = 1
 NIGHT_SHIFT_TIME = [2300, 0, 100, 200, 300, 400, 500, 600]
-NSD = 1.10
+DIFF = 1.10 # Night Shift Differential
 
 # Day shift is from 0900 to 1800
 # Night shift is from 2200 to 0600
@@ -262,7 +262,7 @@ loop do
           end
         # Night shift
         elsif workday.start_time == 1800
-          earnings += workday.night_shift_hours * HOURLY_RATE * NSD
+          earnings += workday.night_shift_hours * HOURLY_RATE * DIFF
         end
         weekly_earnings += earnings
         printf "\nDay #{i+1}: " + '%.2f' % earnings + "\n\n"
